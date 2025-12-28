@@ -251,28 +251,135 @@ function calculateBalance(){
 
 /* WHATSAPP */
 function shareWhatsApp(){
-  let msg=`🧾 BILL RECEIPT\nInvoice: ${invoiceNumber}\nCustomer: ${customerName.value}\n\n`;
+  let phone = customerPhone.value.replace(/\D/g, ""); // only numbers
+
+  if(phone.length < 10){
+    alert("Please enter valid customer phone number");
+    return;
+  }
+
+  // India default (+91) handling
+  if(phone.length === 10){
+    phone = "91" + phone;
+  }
+
+  let msg = `🧾 BILL RECEIPT
+Invoice: ${invoiceNumber}
+Customer: ${customerName.value}
+
+`;
+
   document.querySelectorAll("#billBody tr").forEach((r,i)=>{
-    msg+=`${i+1}. ${r.querySelector(".product-name").value} - ₹${r.querySelector(".amount").innerText}\n`;
+    msg += `${i+1}. ${r.querySelector(".product-name").value} - ₹${r.querySelector(".amount").innerText}\n`;
   });
-  msg+=`\nTotal: ₹${totalAmount.innerText}\n${balanceText.innerText}\nThank you!`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,"_blank");
+
+  msg += `
+Total: ₹${totalAmount.innerText}
+${balanceText.innerText}
+
+🙏 Thank you!`;
+
+  window.open(
+    `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
 }
 
+
 /* PDF */
+/* PROFESSIONAL PDF */
 function downloadPDF(){
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF();
-  doc.text("BILLING INVOICE",105,15,{align:"center"});
-  doc.text(`Invoice: ${invoiceNumber}`,14,30);
-  let y=45;
-  document.querySelectorAll("#billBody tr").forEach((r,i)=>{
-    doc.text(`${i+1}. ${r.querySelector(".product-name").value} - ₹${r.querySelector(".amount").innerText}`,14,y);
-    y+=8;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("p", "mm", "a4");
+
+  let y = 15;
+
+  /* ===== HEADER ===== */
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("BILLING INVOICE", 105, y, { align: "center" });
+
+  y += 10;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Invoice No : ${invoiceNumber}`, 14, y);
+  doc.text(`Date : ${invoiceDate.value}`, 150, y);
+
+  y += 6;
+  doc.text(`Customer Name : ${customerName.value || "-"}`, 14, y);
+  doc.text(`Phone : ${customerPhone.value || "-"}`, 150, y);
+
+  /* ===== LINE ===== */
+  y += 6;
+  doc.line(14, y, 195, y);
+
+  /* ===== TABLE HEADER ===== */
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.text("No", 14, y);
+  doc.text("Product", 28, y);
+  doc.text("MRP", 110, y);
+  doc.text("Qty", 130, y);
+  doc.text("Amount", 165, y);
+
+  y += 3;
+  doc.line(14, y, 195, y);
+
+  /* ===== TABLE BODY ===== */
+  doc.setFont("helvetica", "normal");
+  y += 7;
+
+  document.querySelectorAll("#billBody tr").forEach((r, i) => {
+    doc.text(String(i + 1), 14, y);
+    doc.text(r.querySelector(".product-name").value || "-", 28, y);
+    doc.text(r.querySelector(".mrp").value || "0", 110, y);
+    doc.text(
+      `${r.querySelector(".qty").value || 0} ${r.querySelector(".unit").value.toUpperCase()}`,
+      130,
+      y
+    );
+    doc.text(r.querySelector(".amount").innerText, 165, y);
+    y += 7;
   });
-  doc.text(`Total: ₹${totalAmount.innerText}`,14,y+10);
+
+  /* ===== SUMMARY ===== */
+  y += 5;
+  doc.line(120, y, 195, y);
+
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.text(`Total Amount : ₹ ${totalAmount.innerText}`, 120, y);
+
+  y += 7;
+  doc.setFont("helvetica", "normal");
+  doc.text(`Paid Amount  : ₹ ${paidAmount.value || 0}`, 120, y);
+
+  y += 7;
+  doc.setFont("helvetica", "bold");
+  doc.text(balanceText.innerText, 120, y);
+
+  /* ===== SIGNATURE ===== */
+  y += 20;
+  doc.setFont("helvetica", "normal");
+  doc.text("Authorized Signature", 140, y);
+
+  // Signature box (image later)
+  doc.rect(135, y + 3, 50, 22);
+  doc.setFontSize(8);
+  doc.text("(Sign here)", 152, y + 17);
+
+  /* ===== FOOTER ===== */
+  doc.setFontSize(9);
+  doc.text(
+    "Thank you for your business!",
+    105,
+    285,
+    { align: "center" }
+  );
+
   doc.save(`Invoice-${invoiceNumber}.pdf`);
 }
+
 
 /* SERVICE WORKER */
 if("serviceWorker"in navigator){
